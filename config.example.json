@@ -1,0 +1,57 @@
+{
+    "listeners": [
+        {
+            "address": "0.0.0.0",
+            "port": 8080
+        }
+    ],
+    // "db_clients": [
+    //     {
+    //         "rdbms": "postgresql",
+    //         "host": "127.0.0.1",
+    //         "port": 5432,
+    //         "dbname": "test",
+    //         "user": "",
+    //         "passwd": "",
+    //         "is_fast": false,
+    //         "number_of_connections": 2,
+    //         "timeout": 3.0
+    //     }
+    // ],
+    "app": {
+        "number_of_threads": 1,
+        "log": {
+            "log_path": "./",
+            "log_size_limit": 100000000,
+            "log_level": "DEBUG"
+        }
+    },
+    //plugins: Define all plugins running in the application
+    "plugins": [
+        {
+            "name": "drogon::plugin::AccessLogger",
+            "config": {
+                "log_path": "./",
+                "log_format": "$request_date $request [$body_bytes_received] ($remote_addr - $local_addr) $status_code [$body_bytes_sent] $processing_time",
+                "log_file": "access.log",
+                "size_limit": 10485760,
+                "use_local_time": false,
+                "custom_time_format": "%Y-%m-%dT%H:%M:%S",
+                "show_microseconds": false,
+                "use_real_ip": true
+            }
+        },
+        {
+            "name": "drogon::plugin::RealIpResolver",
+            "config": {
+                "trust_ips": [
+                    "127.0.0.1",
+                    "172.16.0.0/12"
+                ],
+                "from_header": "x-forwarded-for",
+                "attribute_key": "real-ip"
+            }
+        }
+    ],
+    "custom_config": {}
+}
