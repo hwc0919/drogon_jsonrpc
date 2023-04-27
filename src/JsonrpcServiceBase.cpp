@@ -95,15 +95,13 @@ void JsonrpcServiceBase::handleJsonrpc(const std::shared_ptr<UserSession> & sess
     }
 
     // Invoke service
-    auto factory = ServiceFactory::getFactoryByName(method);
-    if (!factory)
+    auto service = JsonrpcServiceBase::getInstanceByName(method);
+    if (!service)
     {
         sess->queueResponse(seq, jsonrpcErrorResponse(kRpcMethodNotFound, reqId));
         sess->flush();
         return;
     }
-    auto service = (*factory)();
-
     drogon::async_run([=]() -> Task<> {
         try
         {

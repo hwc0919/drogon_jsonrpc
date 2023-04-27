@@ -18,11 +18,11 @@ enum JsonrpcErrorCode
 };
 
 static const std::unordered_map<JsonrpcErrorCode, std::string> jsonRpcErrorMessage{
-        {kRpcParseError, "Parse error"},
-        {kRpcInvalidRequest, "Invalid request"},
-        {kRpcMethodNotFound, "Method not found"},
-        {kRpcInvalidParams, "Invalid params"},
-        {kRpcInternalError, "Internal error"},
+    { kRpcParseError, "Parse error" },
+    { kRpcInvalidRequest, "Invalid request" },
+    { kRpcMethodNotFound, "Method not found" },
+    { kRpcInvalidParams, "Invalid params" },
+    { kRpcInternalError, "Internal error" },
 };
 
 class JsonRpcException : public std::runtime_error
@@ -55,73 +55,33 @@ public:
 
     virtual ~JsonrpcServiceBase() = default;
     virtual drogon::Task<nlohmann::json> handleRequest(const std::shared_ptr<UserSession> & sess, const nlohmann::json & params) = 0;
-};
 
-/**
- * @class ServiceFactory
- * Used to register and create service instance by name.
- */
-struct ServiceFactory
-{
-public:
-    virtual std::shared_ptr<JsonrpcServiceBase> operator()() = 0;
-
-    static std::shared_ptr<ServiceFactory> getFactoryByName(const std::string & name)
+    static std::shared_ptr<JsonrpcServiceBase> getInstanceByName(const std::string & name)
     {
-        auto iter = factories().find(name);
-        if (iter == factories().end())
+        auto iter = instances().find(name);
+        if (iter == instances().end())
         {
             return nullptr;
         }
         return iter->second;
     }
-    // Only call this method during static initialization period, to save the mutex
-    template <typename T>
-    static bool registerFactory(std::string name)
-    {
-        return factories().emplace(name, getFactoryInstance<T>()).second;
-    }
-    static const std::vector<std::string> & names()
-    {
-        return names_();
-    }
 
 private:
-    static std::unordered_map<std::string, std::shared_ptr<ServiceFactory>> & factories()
+    template <typename T, typename U>
+    friend struct ServiceTraits;
+    static std::unordered_map<std::string, std::shared_ptr<JsonrpcServiceBase>> & instances()
     {
-        static std::unordered_map<std::string, std::shared_ptr<ServiceFactory>> factories;
-        return factories;
-    }
-    static std::vector<std::string> & names_()
-    {
-        static std::vector<std::string> names;
-        return names;
-    }
-    template <typename T>
-    static const std::shared_ptr<ServiceFactory> & getFactoryInstance();
-};
-
-template <typename T>
-struct ServiceFactoryT : public ServiceFactory
-{
-    std::shared_ptr<JsonrpcServiceBase> operator()() override
-    {
-        return std::make_shared<T>();
+        static std::unordered_map<std::string, std::shared_ptr<JsonrpcServiceBase>> m;
+        return m;
     }
 };
-
-template <typename T>
-const std::shared_ptr<ServiceFactory> & ServiceFactory::getFactoryInstance()
-{
-    static std::shared_ptr<ServiceFactory> factory = std::make_shared<ServiceFactoryT<T>>();
-    return factory;
-}
 
 template <typename T>
 struct ServiceTraits<T, typename std::enable_if<std::is_base_of<JsonrpcServiceBase, T>::value, T>::type>
 {
     static void registerClass()
     {
-        ServiceFactory::registerFactory<T>(T::JSON_RPC_METHOD);
+        auto servicePtr = std::make_shared<T>();
+        JsonrpcServiceBase::instances().emplace(T::JSON_RPC_METHOD, servicePtr);
     }
 };
